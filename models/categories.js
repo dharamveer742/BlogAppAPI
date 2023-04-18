@@ -10,4 +10,4 @@ const categorySchema = new mongoose.Schema(
     {timestamps:true} // user created and updated
 );
 
-module.exports = mongoose.model("User",userSchema);
+module.exports = mongoose.model("Category",categorySchema);

@@ -1,5 +1,6 @@
 const router = require("express").Router();
 const User = require("../models/users")
+const Post = require("../models/post")
 const bcrypt = require("bcrypt");
 
 // update
@@ -7,12 +8,12 @@ const bcrypt = require("bcrypt");
 router.put("/:id",async (req,res)=>{
     if(req.body.userId === req.params.id){
         if(req.body.password){
-            req.body.password = bcrypt.hash(req.body.password,10);
+            req.body.password = await bcrypt.hash(req.body.password,10);
         }
         try{
-             const updatedUser = User.findByIdAndUpdate(req.params.id,{
+             const updatedUser = await User.findByIdAndUpdate(req.params.id,{
                 $set:req.body
-             }) 
+             },{new:true})  // to return updated user
              res.status(200).json(updatedUser)  
         }
         catch(err){
@@ -24,20 +25,47 @@ router.put("/:id",async (req,res)=>{
     }
 })
 
-router.post("/login",async (req,res)=>{
+// Delete a user and it's posts
+
+router.delete("/:id",async (req,res)=>{
+    if(req.body.userId===req.params.id){
+        try{
+            const user = await User.findById(req.params.id);
+
+            try{
+                await Post.deleteMany({username:user.username})
+                await User.findByIdAndDelete(req.params.id)
+                res.status(200).json("user has been deleted")
+            }
+            catch(err){
+                res.status(500).json(err);
+            }
+        }
+        catch(err){
+            res.status(404).json("user not found !")
+        }
+        
+    }
+    else{
+        res.status(401).status("you can delete only your account");
+    }
+})
+
+// get a user
+
+router.get("/:id",async (req,res)=>{
+   
     try{
-        const user = await User.findOne({username:req.body.username})
-        !user && res.status(400).json("Wrong Credentials");
-        const validate =  await bcrypt.compare(req.body.password,user.password);
-        !validate && res.status(400).json("Wrong Credentials");
-        
-        const {password,...others} = user._doc;  // we do not want to send the hashed password to frontend so  we are excluding.
-        
-        res.status(200).json(others);
+        const user = await User.findById(req.params.id);
+        const {password,...others} = user._doc;
+        console.log(user);
+        res.status(200).json(others)                                                                            //  If the document is not found, the function returns null.
     }
     catch(err){
         res.status(500).json(err);
     }
+    
 })
+
 
 module.exports = router;
